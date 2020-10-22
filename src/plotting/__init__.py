@@ -1,2 +1,2 @@
-from .plain import plot_route
+from .plain import route
 from .styles import set_style
