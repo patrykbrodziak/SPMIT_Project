@@ -304,25 +304,3 @@ class GeneticOptimizer:
         plt.plot(time_steps[:final_epoch], self.history['min_fitness'][:final_epoch])
         plt.plot(time_steps[:final_epoch], self.history['max_fitness'][:final_epoch])
         plt.grid()
-
-    @staticmethod
-    def plot_route(route: np.array, points: np.array) -> None:
-        """
-        Plots given route and data points
-
-        :param route: order of traversed points
-        :param points: coordinates in plane of data points
-        """
-
-        ax = plt.axes()
-        for i in range(1, points.shape[0]):
-            x = points[int(route[i-1])]
-            y = points[int(route[i])]
-
-            dx = y[0] - x[0]
-            dy = y[1] - x[1]
-
-            ax.arrow(x[0], x[1], dx, dy, color='b')
-
-        plt.scatter(points[:, 0], points[:, 1], color='r', s=80)
-        plt.grid()
