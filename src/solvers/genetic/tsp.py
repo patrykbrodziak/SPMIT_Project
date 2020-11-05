@@ -29,70 +29,22 @@ class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
         mutation_schedule_type: str = "const",
     ):
         """Initializer"""
-        super().__init__()
-        # set operators
-        self.mutation = self.mutation_operator[mutation]
-        self.crossover = self.crossover_operator[crossover]
-        self.selection = self.selection_operator[selection]
-        # set operator rate
-        self.population_size = population_size
-        self.crossover_rate = crossover_rate
-        self.mutation_rate = mutation_rate
-        self.elitism_rate = elitism_rate
-        self.extra_initialization_rate = extra_initialization_rate
-        # set schedules
-        self.mutation_schedule_type = self.operator_schedules[mutation_schedule_type]
-        self.crossover_schedule_type = self.operator_schedules[crossover_schedule_type]
+        super().__init__(
+            population_size,
+            crossover_rate,
+            mutation_rate,
+            elitism_rate,
+            extra_initialization_rate,
+            crossover,
+            mutation,
+            selection,
+            crossover_schedule_type,
+            mutation_schedule_type,
+        )
 
     def fitness(self, specimen: np.array) -> np.array:
         """Calculates fitness for given ordering of coordinates in an array"""
         return np.sum(self.distance_matrix[specimen[1:], specimen[:-1]])
-
-    @staticmethod
-    def initialize_population(
-        individual_size: int, population_size: int, extra_initialization_rate: float = 1.0
-    ) -> tf.Tensor:
-        """
-        Initializes population with stochastic method, where
-        each individual is randomly permuted order of coordinates
-
-        :param individual_size: number of locations for TSP problem
-        :param population_size: number of initial solutions
-        :param extra_initialization_rate: number of extra generated solutions, which are discarded if they have fitness
-                                          worse than number of solutions given by population size
-
-        :return: array with shape (population_size, num_points) where each element
-                 is individual solution
-        """
-        initial_size = int(population_size * extra_initialization_rate)
-        population = tf.broadcast_to(tf.range(0, individual_size), shape=[initial_size, individual_size])
-        population = tf.map_fn(np.random.permutation, population)
-
-        return population
-
-    def create_offspring(self, mating_pool: tf.Tensor, num_offspring: int) -> tf.Tensor:
-        """
-        Create crossover solutions from given mating pool
-
-        :param mating_pool: solutions to choose from
-        :param num_offspring: number of generated offspring
-
-        :return: array of offspring solutions
-        """
-        candidates = tf.random.uniform([num_offspring, 2], maxval=mating_pool.shape[0], dtype="int32")
-        parents = tf.gather(mating_pool, candidates)
-
-        return tf.map_fn(self.crossover, parents)
-
-    def mutate(self, mutation_pool: tf.Tensor) -> tf.Tensor:
-        """
-        Mutate selected solutions by given operator
-
-        :param mutation_pool: solutions to mutate
-
-        :return: array with mutated offspring
-        """
-        return tf.map_fn(self.mutation, mutation_pool)
 
     def minimize(
         self,
