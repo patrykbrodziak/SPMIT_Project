@@ -5,52 +5,48 @@ import tensorflow as tf
 from scipy.spatial import distance
 from tqdm import tqdm as progress_bar
 
+from src.solvers.genetic import BaseCombinatorialGeneticOptimizer
 from src.solvers.utils import slice_update
 
 
-class TSPGeneticOptimizer:
+class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
     """
     Class holds implementation of genetic optimization
     algorithm for traveling salesman problem
     """
 
-    def __init__(self, coordinates: np.array):
+    def __init__(
+        self,
+        population_size: int,
+        crossover_rate: float = 0.8,
+        mutation_rate: float = 0.6,
+        elitism_rate: float = 0.1,
+        extra_initialization_rate: float = 5.0,
+        crossover: str = "ox",
+        mutation: str = "inv",
+        selection: str = "n",
+        crossover_schedule_type: str = "constant",
+        mutation_schedule_type: str = "constant",
+    ):
         """Initializer"""
-        self.neighbourhood_matrix = distance.cdist(coordinates, coordinates)
-        self.history = {"min_fitness": None, "mean_fitness": None, "max_fitness": None, "epoch": None}
-        self.crossover_operator = {
-            "OX": TSPGeneticOptimizer.create_offspring_ox,
-            "CX": TSPGeneticOptimizer.create_offspring_cx,
-        }
-        self.mutation_operator = {
-            "Inversion": TSPGeneticOptimizer.mutate_gene_invert,
-            "Insertion": TSPGeneticOptimizer.mutate_gene_insert,
-            "Displacement": TSPGeneticOptimizer.mutate_gene_displace,
-            "Exchange": TSPGeneticOptimizer.mutate_gene_exchange,
-        }
+        super().__init__()
+        # set operators
+        self.mutation = self.mutation_operator[mutation]
+        self.crossover_op = self.crossover_op[crossover]
+        self.selection = self.selection_operator[selection]
+        # set operator rate
+        self.population_size = population_size
+        self.crossover_rate = crossover_rate
+        self.mutation_rate = mutation_rate
+        self.elitism_rate = elitism_rate
+        self.extra_initialization_rate = extra_initialization_rate
 
-    @staticmethod
-    def validate_population(population: tf.Tensor) -> None:
-        """
-        Check if all elements in generation array are permutation of input data
-
-        :param population: data for TSP
-
-        :return: True if data is correct
-        """
-        if not np.all(
-            np.apply_along_axis(lambda individual: np.unique(individual).shape[0] == individual.shape[0], 1, population)
-        ):
-            raise ValueError("Genetic Operator resulted in invalid representation!")
-
-    def select_n_fittest(self, population: tf.Tensor, num_fittest: int) -> tf.Tensor:
-        """Choose N individuals with highest fitness"""
-        fitness = tf.map_fn(self.fitness, population, dtype="float32")
-        return tf.gather(population, tf.argsort(fitness)[:num_fittest])
+        self.mutation_schedule = mutation_schedule_type
+        self.crossover_schedule = crossover_schedule_type
 
     def fitness(self, specimen: np.array) -> np.array:
         """Calculates fitness for given ordering of coordinates in an array"""
-        return np.sum(self.neighbourhood_matrix[specimen[1:], specimen[:-1]])
+        return np.sum(self.distance_matrix[specimen[1:], specimen[:-1]])
 
     @staticmethod
     def initialize_population(
@@ -74,116 +70,29 @@ class TSPGeneticOptimizer:
 
         return population
 
-    @staticmethod
-    def create_offspring_ox(parents: tf.Tensor) -> tf.Tensor:
-        """
-        Creates offspring from two parent arrays
-        Offspring has a partial tour from both parent arrays
-
-        :param parents: Tensor of two individual solutions to participate in crossover
-
-        :return: offspring array being a combination of mother and father arrays
-        """
-        mother, father = parents
-        offspring = tf.fill([mother.shape[0]], -1)  # initialize offspring with negative values
-        # take random slice of mother tensor
-        low, high = tf.sort(tf.random.uniform([2, ], maxval=mother.shape[0], dtype="int32"))
-        offspring = slice_update(offspring, tf.range(low, high), mother[low:high])  # fill offspring with mother slice
-        # gather remaining elements from father tensor
-        to_update = tf.where(offspring < 0)
-        updates = tf.gather(
-            father, tf.where(tf.logical_not(tf.numpy_function(np.isin, [father, offspring], Tout="float32")))
-        )
-        # fill in offspring with father slice
-        offspring = slice_update(offspring, to_update, updates)
-
-        return offspring
-
-    @staticmethod
-    def create_offspring_cx(parents: tf.Tensor) -> tf.Tensor:
-        """
-        Creates offspring from two parent arrays, preserving
-        as much sequence information from first parent as possible
-        and completing information with genome from second parent
-
-        :param parents: Tensor of two individual solutions to participate in crossover
-
-        :return: offspring array being a combination of mother and father arrays
-        """
-        raise NotImplementedError
-
-    def crossover(self, mating_pool: tf.Tensor, num_offspring: int, operator: str) -> tf.Tensor:
+    def crossover(self, mating_pool: tf.Tensor, num_offspring: int) -> tf.Tensor:
         """
         Create crossover solutions from given mating pool
 
         :param mating_pool: solutions to choose from
         :param num_offspring: number of generated offspring
-        :param operator: which crossover operator to use
 
         :return: array of offspring solutions
         """
         candidates = tf.random.uniform([num_offspring, 2], maxval=mating_pool.shape[0], dtype="int32")
         parents = tf.gather(mating_pool, candidates)
 
-        return tf.map_fn(self.crossover_operator[operator], parents)
+        return tf.map_fn(self.crossover_op, parents)
 
-    @staticmethod
-    def mutate_gene_invert(specimen: tf.Tensor) -> tf.Tensor:
-        """
-        Creates offspring by inverting random sequence in individual solution
-
-        :param specimen: solution to mutate
-
-        :return: mutated offspring
-        """
-        low, high = tf.sort(tf.random.uniform([2,], maxval=specimen.shape[0], dtype="int32"))
-        return slice_update(specimen, tf.range(low, high), tf.reverse(specimen[low:high], [0]))
-
-    @staticmethod
-    def mutate_gene_insert(specimen: tf.Tensor) -> tf.Tensor:
-        """
-        Creates mutated offspring by selecting random gene(index in an array)
-        and inserting it into random place in the same array
-
-        :param specimen: solution to mutate
-
-        :return: mutated offspring
-        """
-        raise NotImplementedError
-
-    @staticmethod
-    def mutate_gene_displace(specimen: tf.Tensor) -> tf.Tensor:
-        """
-        Creates mutated offspring by selecting random sequence
-        and inserting it into different place in an array
-
-        :param specimen: solution to mutate
-
-        :return: mutated offspring
-        """
-        raise NotImplementedError
-
-    @staticmethod
-    def mutate_gene_exchange(specimen: tf.Tensor) -> tf.Tensor:
-        """
-        Creates mutated offspring by swapping two randomly selected genes
-
-        :param specimen: solution to mutate
-
-        :return: mutated offspring
-        """
-        raise NotImplementedError
-
-    def mutate(self, mutation_pool: tf.Tensor, operator: str) -> tf.Tensor:
+    def mutate(self, mutation_pool: tf.Tensor) -> tf.Tensor:
         """
         Mutate selected solutions by given operator
 
         :param mutation_pool: solutions to mutate
-        :param operator: mutation operator
 
         :return: array with mutated offspring
         """
-        return tf.map_fn(self.mutation_operator[operator], mutation_pool)
+        return tf.map_fn(self.mutation, mutation_pool)
 
     @staticmethod
     def schedules(num_steps: int, rate: float) -> np.array:
@@ -213,69 +122,47 @@ class TSPGeneticOptimizer:
 
     def minimize(
         self,
-        data: np.array,
+        coordinates: np.array,
         num_steps: int,
-        population_size: int,
-        crossover_rate: float = 0.8,
-        mutation_rate: float = 0.6,
-        elitism_rate: float = 0.1,
-        extra_initialization_rate: float = 5.0,
-        crossover_operator: str = "OX",
-        mutation_operator: str = "Exchange",
-        crossover_schedule_type: str = "constant",
-        mutation_schedule_type: str = "constant",
         patience: int = 50,
-        logging: bool = False,
-        logging_path: str = None,
         silent: bool = True,
     ) -> Tuple[Any, Any]:
         """
         Minimize TSP for given coordinate points
 
-        :param data: coordinates of cities to minimize TSP
+        :param coordinates: coordinates of cities to minimize TSP
         :param num_steps: number of iterations
-        :param population_size: number of individuals in a generation
-        :param crossover_rate: fraction of parents for population
-        :param mutation_rate: fraction of mutated solutions for each epoch
-        :param elitism_rate: fraction of copied solutions
-        :param extra_initialization_rate: number of over initialized solutions
-        :param crossover_operator: which type of crossover to use
-        :param mutation_operator: which type of mutation to use
-        :param crossover_schedule_type: crossover schedule
-        :param mutation_schedule_type: mutation schedule
         :param patience: number of epochs without improving solution before terminating
-        :param logging: if True saves best route after each generation
-        :param logging_path: path to directory where logs will be saved
         :param silent: if False print progress bar during execution
 
         :return: tuple with best route and its length
         """
-        population = self.initialize_population(data.shape[0], population_size, extra_initialization_rate)
+        self.distance_matrix = distance.cdist(coordinates, coordinates)
+
+        crossover_schedule = TSPGeneticOptimizer.schedules(num_steps, self.crossover_rate)[self.crossover_schedule]
+        mutation_schedule = TSPGeneticOptimizer.schedules(num_steps, self.mutation_rate)[self.mutation_schedule]
+
+        population = self.initialize_population(coordinates.shape[0], self.population_size, self.extra_initialization_rate)
         self.history["min_fitness"] = np.zeros(num_steps)
         self.history["mean_fitness"] = np.zeros(num_steps)
         self.history["max_fitness"] = np.zeros(num_steps)
 
-        crossover_schedule = TSPGeneticOptimizer.schedules(num_steps, crossover_rate)[crossover_schedule_type]
-        mutation_schedule = TSPGeneticOptimizer.schedules(num_steps, mutation_rate)[mutation_schedule_type]
-
         for generation in progress_bar(range(num_steps), disable=silent):
-            elite = self.select_n_fittest(population, int(elitism_rate * population_size))
+            elite = self.selection(self.fitness, population, int(self.elitism_rate * self.population_size))
 
             self.validate_population(population.numpy())
 
-            num_to_crossover = int(crossover_rate * population_size)
-            mating_pool = self.select_n_fittest(population, num_to_crossover)
-            offspring = self.crossover(mating_pool, int((1 - elitism_rate) * population_size), crossover_operator)
+            num_to_crossover = int(self.crossover_rate * self.population_size)
+            mating_pool = self.selection(self.fitness, population, num_to_crossover)
+            offspring = self.crossover(mating_pool, int((1 - self.elitism_rate) * self.population_size))
 
             self.validate_population(population.numpy())
 
-            num_to_mutate = int(mutation_rate * population_size)
+            num_to_mutate = int(self.mutation_rate * self.population_size)
             to_mutate = tf.random.uniform(
-                [num_to_mutate, ], maxval=int((1 - elitism_rate) * population_size), dtype="int32"
+                [num_to_mutate, ], maxval=int((1 - self.elitism_rate) * self.population_size), dtype="int32"
             )
-            offspring = slice_update(
-                offspring, indices=to_mutate, updates=self.mutate(tf.gather(offspring, to_mutate), mutation_operator)
-            )
+            offspring = slice_update(offspring, indices=to_mutate, updates=self.mutate(tf.gather(offspring, to_mutate)))
 
             self.validate_population(population.numpy())
 
@@ -289,11 +176,8 @@ class TSPGeneticOptimizer:
             self.history["max_fitness"][generation] = fitness.numpy().max()
             self.history["epoch"] = generation
 
-            crossover_rate = crossover_schedule[generation]
-            mutation_rate = mutation_schedule[generation]
-
-            if logging:
-                np.savetxt(logging_path, population[fitness.numpy().argmin()])
+            self.crossover_rate = crossover_schedule[generation]
+            self.mutation_rate = mutation_schedule[generation]
 
             # break condition
             validation = self.history["min_fitness"][generation - patience: generation]
