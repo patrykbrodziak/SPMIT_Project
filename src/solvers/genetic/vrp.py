@@ -1,4 +1,4 @@
-from typing import Any, Tuple
+from typing import Any, Callable, Union, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -12,6 +12,12 @@ from src.solvers.utils import slice_update
 class VRPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
     """Genetic Algorithm solving Vehicle Routing Problem"""
 
+    constrains = {
+        "max": np.max,
+        "mean": np.mean,
+        "sum": np.sum,
+    }
+
     def __init__(
         self,
         population_size: int,
@@ -23,11 +29,13 @@ class VRPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
         crossover: str = "ox",
         mutation: str = "inv",
         selection: str = "n",
+        constraint: Union[str, Callable[[np.array], float]] = "max",
         crossover_schedule_type: str = "const",
         mutation_schedule_type: str = "const",
     ):
         """Initializer"""
         self.n_agents = n_agents
+        self.constraint = self.constrains[constraint] if type(constraint) is str else constraint
 
         super().__init__(
             population_size,
@@ -47,7 +55,7 @@ class VRPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
         routes = np.array_split(specimen, self.n_agents)
         lengths = np.apply_along_axis(lambda route: np.sum(self.distance_matrix[route[1:], route[:-1]]), 1, routes)
 
-        return np.max(lengths)
+        return self.constraint(lengths)
 
     def minimize(
         self,
@@ -112,4 +120,4 @@ class VRPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
             if np.all(np.diff(validation) == 0) and generation >= patience:
                 return population[fitness.numpy().argmin()], fitness.numpy().min()
 
-        return population[fitness.numpy().argmin()], fitness.numpy().min()
+        return np.array_split(population[fitness.numpy().argmin()].numpy(), self.n_agents), fitness.numpy().min()
