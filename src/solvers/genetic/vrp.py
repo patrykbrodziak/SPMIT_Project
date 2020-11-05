@@ -118,6 +118,9 @@ class VRPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
 
             validation = self.history["min_fitness"][generation - patience: generation]
             if np.all(np.diff(validation) == 0) and generation >= patience:
-                return population[fitness.numpy().argmin()], fitness.numpy().min()
+                return (
+                    np.array_split(population[fitness.numpy().argmin()].numpy(), self.n_agents),
+                    fitness.numpy().min()
+                )
 
         return np.array_split(population[fitness.numpy().argmin()].numpy(), self.n_agents), fitness.numpy().min()
