@@ -29,5 +29,25 @@ def ox(parents: tf.Tensor) -> tf.Tensor:
     return offspring
 
 
-def cx():
-    ...
+def cx(parents: tf.Tensor) -> tf.Tensor:
+    """
+    Creates offspring from two parent arrays using Cycle Crossover operator
+
+    :param parents: Tensor of two individual solutions to participate in crossover
+
+    :return: offspring array being a combination of mother and father arrays
+    """
+    mother, father = parents.numpy()
+    offspring = np.full((mother.shape[0]), -1)
+
+    index = np.random.randint(mother.shape[0])
+
+    while not np.isin(mother[index], offspring):  # loop until encountered index which is already in offspring
+        offspring[index] = mother[index]
+        index = np.where(mother == father[index])
+
+    leftover_indices = np.where(offspring < 0)  # pick all empty indices in offspring
+    offspring[leftover_indices] = father[leftover_indices]
+
+    return tf.convert_to_tensor(offspring)
+
