@@ -1,5 +1,6 @@
 # Created by .ignore support plugin (hsz.mobi)
 .idea/*
 data/*
+!data/README.md
 *.ipynb_checkpoints
 *-checkpoint.ipynb
