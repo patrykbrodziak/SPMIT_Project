@@ -61,7 +61,6 @@ def multiple_routes(
     scatter_args = scatter_args or {}
 
     colors = sns.color_palette()
-    figure = plt.figure(figsize=[16, 9])
     axes = plt.axes()
 
     for route_index, route_points_order in enumerate(route_orders):
