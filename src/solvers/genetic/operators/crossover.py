@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 from src.solvers.utils import slice_update
@@ -26,3 +27,7 @@ def ox(parents: tf.Tensor) -> tf.Tensor:
     offspring = slice_update(offspring, to_update, updates)
 
     return offspring
+
+
+def cx():
+    ...
