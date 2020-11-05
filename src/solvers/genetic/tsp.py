@@ -25,14 +25,14 @@ class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
         crossover: str = "ox",
         mutation: str = "inv",
         selection: str = "n",
-        crossover_schedule_type: str = "constant",
-        mutation_schedule_type: str = "constant",
+        crossover_schedule_type: str = "const",
+        mutation_schedule_type: str = "const",
     ):
         """Initializer"""
         super().__init__()
         # set operators
         self.mutation = self.mutation_operator[mutation]
-        self.crossover_op = self.crossover_op[crossover]
+        self.crossover = self.crossover_operator[crossover]
         self.selection = self.selection_operator[selection]
         # set operator rate
         self.population_size = population_size
@@ -40,9 +40,9 @@ class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
         self.mutation_rate = mutation_rate
         self.elitism_rate = elitism_rate
         self.extra_initialization_rate = extra_initialization_rate
-
-        self.mutation_schedule = mutation_schedule_type
-        self.crossover_schedule = crossover_schedule_type
+        # set schedules
+        self.mutation_schedule_type = self.operator_schedules[mutation_schedule_type]
+        self.crossover_schedule_type = self.operator_schedules[crossover_schedule_type]
 
     def fitness(self, specimen: np.array) -> np.array:
         """Calculates fitness for given ordering of coordinates in an array"""
@@ -70,7 +70,7 @@ class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
 
         return population
 
-    def crossover(self, mating_pool: tf.Tensor, num_offspring: int) -> tf.Tensor:
+    def create_offspring(self, mating_pool: tf.Tensor, num_offspring: int) -> tf.Tensor:
         """
         Create crossover solutions from given mating pool
 
@@ -82,7 +82,7 @@ class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
         candidates = tf.random.uniform([num_offspring, 2], maxval=mating_pool.shape[0], dtype="int32")
         parents = tf.gather(mating_pool, candidates)
 
-        return tf.map_fn(self.crossover_op, parents)
+        return tf.map_fn(self.crossover, parents)
 
     def mutate(self, mutation_pool: tf.Tensor) -> tf.Tensor:
         """
@@ -93,32 +93,6 @@ class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
         :return: array with mutated offspring
         """
         return tf.map_fn(self.mutation, mutation_pool)
-
-    @staticmethod
-    def schedules(num_steps: int, rate: float) -> np.array:
-        """
-        Get dict of mutation schedules as numpy arrays
-
-        :param num_steps: number of iterations in minimize method
-        :param rate: crossover or mutation rate
-
-        :return: dict with schedules to choose from
-        """
-        time_steps = np.linspace(0.001, 1.0, num_steps)
-        schedules = {
-            "constant": np.full(num_steps, rate),  # constant rate
-            # linear functions starting at 0 and ending at selected rate
-            "increasing_linear": np.apply_along_axis(lambda step: rate * step, 0, time_steps),
-            "decreasing_linear": np.apply_along_axis(lambda step: rate * (1.0 - step), 0, time_steps),
-            # square root function
-            "increasing_root": np.apply_along_axis(lambda step: rate * np.sqrt(step), 0, time_steps),
-            "decreasing_root": np.apply_along_axis(lambda step: rate * np.sqrt(1.0 - step), 0, time_steps),
-            # second power functions
-            "increasing_square": np.apply_along_axis(lambda step: rate * step ** 2, 0, time_steps),
-            "decreasing_square": np.apply_along_axis(lambda step: rate * ((1.0 - step) ** 2), 0, time_steps),
-        }
-
-        return schedules
 
     def minimize(
         self,
@@ -139,13 +113,13 @@ class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
         """
         self.distance_matrix = distance.cdist(coordinates, coordinates)
 
-        crossover_schedule = TSPGeneticOptimizer.schedules(num_steps, self.crossover_rate)[self.crossover_schedule]
-        mutation_schedule = TSPGeneticOptimizer.schedules(num_steps, self.mutation_rate)[self.mutation_schedule]
-
         population = self.initialize_population(coordinates.shape[0], self.population_size, self.extra_initialization_rate)
         self.history["min_fitness"] = np.zeros(num_steps)
         self.history["mean_fitness"] = np.zeros(num_steps)
         self.history["max_fitness"] = np.zeros(num_steps)
+
+        crossover_schedule = self.crossover_schedule_type(num_steps, self.crossover_rate)
+        mutation_schedule = self.mutation_schedule_type(num_steps, self.mutation_rate)
 
         for generation in progress_bar(range(num_steps), disable=silent):
             elite = self.selection(self.fitness, population, int(self.elitism_rate * self.population_size))
@@ -154,7 +128,7 @@ class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
 
             num_to_crossover = int(self.crossover_rate * self.population_size)
             mating_pool = self.selection(self.fitness, population, num_to_crossover)
-            offspring = self.crossover(mating_pool, int((1 - self.elitism_rate) * self.population_size))
+            offspring = self.create_offspring(mating_pool, int((1 - self.elitism_rate) * self.population_size))
 
             self.validate_population(population.numpy())
 
@@ -179,7 +153,6 @@ class TSPGeneticOptimizer(BaseCombinatorialGeneticOptimizer):
             self.crossover_rate = crossover_schedule[generation]
             self.mutation_rate = mutation_schedule[generation]
 
-            # break condition
             validation = self.history["min_fitness"][generation - patience: generation]
             if np.all(np.diff(validation) == 0) and generation >= patience:
                 return population[fitness.numpy().argmin()], fitness.numpy().min()

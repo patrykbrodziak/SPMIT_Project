@@ -1,19 +1,14 @@
-from typing import Any, Tuple
-
 import numpy as np
 import tensorflow as tf
-from scipy.spatial import distance
-from tqdm import tqdm as progress_bar
 
 from src.solvers.genetic import operators
-from src.solvers.utils import slice_update
 
 
 class BaseCombinatorialGeneticOptimizer:
     """
     Base class for Combinatorial problems genetic optimizers
     """
-    crossover_op = {
+    crossover_operator = {
         "ox": operators.crossover.ox,
         "cx": operators.crossover.cx,
     }
@@ -29,6 +24,16 @@ class BaseCombinatorialGeneticOptimizer:
         "bt": operators.selection.binary_tournament,
         "n": operators.selection.n_fittest,
         "t": operators.selection.tournament,
+    }
+
+    operator_schedules = {
+        "const": operators.schedules.constant,
+        "increasing_linear": operators.schedules.increasing_linear,
+        "decreasing_linear": operators.schedules.decreasing_linear,
+        "increasing_root": operators.schedules.increasing_root,
+        "decreasing_root": operators.schedules.decreasing_root,
+        "increasing_square": operators.schedules.increasing_square,
+        "decreasing_square": operators.schedules.decreasing_square,
     }
 
     def __init__(self):
