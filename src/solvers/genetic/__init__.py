@@ -1,1 +1,1 @@
-from .optimizer import GeneticOptimizer
+from .tsp import TSPGeneticOptimizer

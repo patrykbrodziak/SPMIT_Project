@@ -8,7 +8,7 @@ from tqdm import tqdm as progress_bar
 from .utils import slice_update
 
 
-class GeneticOptimizer:
+class TSPGeneticOptimizer:
     """
     Class holds implementation of genetic optimization
     algorithm for traveling salesman problem
@@ -19,14 +19,14 @@ class GeneticOptimizer:
         self.neighbourhood_matrix = distance.cdist(coordinates, coordinates)
         self.history = {"min_fitness": None, "mean_fitness": None, "max_fitness": None, "epoch": None}
         self.crossover_operator = {
-            "OX": GeneticOptimizer.create_offspring_ox,
-            "CX": GeneticOptimizer.create_offspring_cx,
+            "OX": TSPGeneticOptimizer.create_offspring_ox,
+            "CX": TSPGeneticOptimizer.create_offspring_cx,
         }
         self.mutation_operator = {
-            "Inversion": GeneticOptimizer.mutate_gene_invert,
-            "Insertion": GeneticOptimizer.mutate_gene_insert,
-            "Displacement": GeneticOptimizer.mutate_gene_displace,
-            "Exchange": GeneticOptimizer.mutate_gene_exchange,
+            "Inversion": TSPGeneticOptimizer.mutate_gene_invert,
+            "Insertion": TSPGeneticOptimizer.mutate_gene_insert,
+            "Displacement": TSPGeneticOptimizer.mutate_gene_displace,
+            "Exchange": TSPGeneticOptimizer.mutate_gene_exchange,
         }
 
     @staticmethod
@@ -255,8 +255,8 @@ class GeneticOptimizer:
         self.history["mean_fitness"] = np.zeros(num_steps)
         self.history["max_fitness"] = np.zeros(num_steps)
 
-        crossover_schedule = GeneticOptimizer.schedules(num_steps, crossover_rate)[crossover_schedule_type]
-        mutation_schedule = GeneticOptimizer.schedules(num_steps, mutation_rate)[mutation_schedule_type]
+        crossover_schedule = TSPGeneticOptimizer.schedules(num_steps, crossover_rate)[crossover_schedule_type]
+        mutation_schedule = TSPGeneticOptimizer.schedules(num_steps, mutation_rate)[mutation_schedule_type]
 
         for generation in progress_bar(range(num_steps), disable=silent):
             elite = self.select_n_fittest(population, int(elitism_rate * population_size))
