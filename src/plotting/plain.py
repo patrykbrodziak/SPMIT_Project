@@ -2,6 +2,21 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
+def history(history: dict) -> None:
+    """Plots optimization history"""
+    final_epoch = history["epoch"]
+    num_steps = history["mean_fitness"].shape[0]
+    time_steps = np.linspace(0, num_steps, num_steps)
+
+    plt.plot(time_steps[:final_epoch], history["mean_fitness"][:final_epoch])
+    plt.plot(time_steps[:final_epoch], history["min_fitness"][:final_epoch])
+    plt.plot(time_steps[:final_epoch], history["max_fitness"][:final_epoch])
+
+    plt.legend(["Mean Fitness", "Min Fitness", "Max Fitness"])
+
+    return
+
+
 def route(
     order: np.array,
     points: np.array,
@@ -31,16 +46,3 @@ def route(
         axes.arrow(x[0], x[1], dx, dy, color=arrow_color)
 
     plt.scatter(points[:, 0], points[:, 1], color=point_color, s=point_size)
-
-
-def history(history: dict) -> None:
-    """Plots optimization history"""
-    final_epoch = history["epoch"]
-    num_steps = history["mean_fitness"].shape[0]
-    time_steps = np.linspace(0, num_steps, num_steps)
-
-    plt.plot(time_steps[:final_epoch], history["mean_fitness"][:final_epoch])
-    plt.plot(time_steps[:final_epoch], history["min_fitness"][:final_epoch])
-    plt.plot(time_steps[:final_epoch], history["max_fitness"][:final_epoch])
-
-    return
