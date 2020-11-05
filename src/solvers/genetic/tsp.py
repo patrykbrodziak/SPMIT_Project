@@ -5,7 +5,7 @@ import tensorflow as tf
 from scipy.spatial import distance
 from tqdm import tqdm as progress_bar
 
-from .utils import slice_update
+from src.solvers.utils import slice_update
 
 
 class TSPGeneticOptimizer:
