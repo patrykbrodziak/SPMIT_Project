@@ -81,3 +81,4 @@ class App:
         self.scrollbar.config(command=self.listbox.yview)
         self.scrollbar.pack(side=RIGHT, fill=Y)
         self.frame.pack()
+
