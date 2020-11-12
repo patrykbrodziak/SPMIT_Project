@@ -8,13 +8,13 @@ class Map:
     def __init__(self):
         self.figure = go.Figure()
 
-    def __call__(self, scatter_df: Optional[pd.DataFrame] = None, traces_df: Optional[pd.DataFrame] = None):
+    def __call__(self, scatter_df: Optional[pd.DataFrame] = None, traces: list = None):
         """Show map with scatter locations and connections between them"""
         if scatter_df is not None:
             self.scatter_points(scatter_df)
 
-        if traces_df is not None:
-            self.draw_connections(traces_df)
+        if traces:
+            self.draw_connections(scatter_df, traces)
 
         self.figure.show()
 
@@ -51,14 +51,20 @@ class Map:
             mapbox={"center": {"lon": 20, "lat": 50}, "style": "open-street-map", "zoom": 5},
         )
 
-    def draw_connections(self, frame: pd.DataFrame) -> None:
-        """Draw connections on map"""
-        for i in range(len(frame)):
-            self.figure.add_trace(
-                go.Scattermapbox(
-                    lon=[frame["start_lon"][i], frame["end_lon"][i]],
-                    lat=[frame["start_lat"][i], frame["end_lat"][i]],
-                    mode="lines",
-                    text="",
+    def draw_connections(self, scatter_df: pd.DataFrame, traces: list) -> None:
+        """Draw connections on map
+
+        :param scatter_df: DataFrame containing latitudes and longitudes of all scattered cities
+                           with keys `lat` and `lon`
+        :param traces: list of list of IDs of cities containing order in which they are traversed
+        """
+        for trace in traces:
+            for start_id, end_id in zip(trace[:-1], trace[1:]):
+                self.figure.add_trace(
+                    go.Scattermapbox(
+                        lon=[scatter_df["lon"][start_id], scatter_df["lon"][end_id]],
+                        lat=[scatter_df["lat"][end_id], scatter_df["lat"][end_id]],
+                        mode="lines",
+                        text="",
+                    )
                 )
-            )

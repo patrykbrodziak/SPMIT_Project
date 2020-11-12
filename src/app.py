@@ -38,7 +38,7 @@ class App:
         self.find_routes_button.pack(pady=10)
         # data frame
         self.cities_df = pd.DataFrame()
-        self.connections_df = pd.DataFrame()
+        self.connections = []
         # optimizer parameters
         self.number_of_vehicles = 5
         # map object
@@ -58,14 +58,18 @@ class App:
 
     def show_on_click_listener(self):
         """Show map with loaded points"""
-        self.map(self.cities_df)
-
-    def find_route(self):
-        optimizer = set_vrp_hyper_parameters(n_points=self.cities_df.index.size, n_agents=self.number_of_vehicles)
-        route, length = optimizer.minimize(self.cities_df[["lat", "long"]].values, num_steps=100, patience=10, silent=True)
+        self.map(self.cities_df, self.connections)
 
     def find_routes_on_click_listener(self):
         self.find_route()
+
+    def find_route(self):
+        optimizer = set_vrp_hyper_parameters(n_points=self.cities_df.index.size, n_agents=self.number_of_vehicles)
+        route, length = optimizer.minimize(
+            self.cities_df[["lat", "long"]].values, num_steps=100, patience=10, silent=True
+        )
+
+        self.connections = route
 
     def set_scrollbar_position(self) -> None:
         """Set initial scrollbar position"""
