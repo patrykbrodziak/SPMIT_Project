@@ -68,7 +68,7 @@ class Map:
                         lat=[scatter_df["lat"][start_id], scatter_df["lat"][end_id]],
                         mode="lines",
                         text="",
-                        line=dict(color=self.colors[self.i])
+                        line=dict(color=self.colors[self.color])
                     )
                 )
-            self.i+=1
+            self.color+=1

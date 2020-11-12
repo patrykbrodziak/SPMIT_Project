@@ -27,7 +27,7 @@ class App:
         self.listbox = Listbox(self.frame, width=50, yscrollcommand=self.scrollbar.set, selectmode=MULTIPLE)
         self.vehicles = Entry(self.root)
         self.vehicles.pack()
-        self.vehicles.insert(0, "Enter number of vehicles:")
+        self.vehicles.insert(0, "Number of vehicles:")
         # buttons
         self.open_from_file_button = Button(
             self.root, text="OPEN FROM FILE", command=self.open_from_file_on_click_listener
@@ -43,7 +43,7 @@ class App:
         self.cities_df = pd.DataFrame()
         self.connections = []
         # optimizer parameters
-        self.number_of_vehicles = 0
+        self.number_of_vehicles = 1
         # map object
         self.map = Map()
 
