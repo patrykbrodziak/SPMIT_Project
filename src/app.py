@@ -1,10 +1,10 @@
-from pathlib import Path
-from tkinter import Label, Frame, Scrollbar, VERTICAL, Listbox, MULTIPLE, Button, END, RIGHT, Y, Tk
-from typing import Union
+import os
+from tkinter import Label, Frame, Scrollbar, VERTICAL, Listbox, MULTIPLE, Button, RIGHT, Y, Tk, filedialog
 
 import pandas as pd
 
 from src.map import Map
+from src.solvers import set_vrp_hyper_parameters
 
 
 class App:
@@ -26,15 +26,21 @@ class App:
         self.scrollbar = Scrollbar(self.frame, orient=VERTICAL)
         self.listbox = Listbox(self.frame, width=50, yscrollcommand=self.scrollbar.set, selectmode=MULTIPLE)
         # buttons
-        self.select_button = Button(self.root, text="SELECT", command=self.select_on_click_listener)
-        self.select_button.pack(pady=10)
         self.open_from_file_button = Button(
             self.root, text="OPEN FROM FILE", command=self.open_from_file_on_click_listener
         )
         self.open_from_file_button.pack(pady=10)
+
+        self.show_button = Button(self.root, text="SHOW MAP", command=self.show_on_click_listener)
+        self.show_button.pack(pady=10)
+
+        self.find_routes_button = Button(self.root, text="FIND ROUTES", command=self.find_routes_on_click_listener)
+        self.find_routes_button.pack(pady=10)
         # data frame
         self.cities_df = pd.DataFrame()
         self.connections_df = pd.DataFrame()
+        # optimizer parameters
+        self.number_of_vehicles = 5
         # map object
         self.map = Map()
 
@@ -43,25 +49,23 @@ class App:
         self.root.mainloop()
         self.root.geometry("400x600")
 
-    def load_files(self, city_file_path: Union[str, Path], connections_file_path: Union[str, Path]) -> None:
-        self.cities_df = pd.read_csv(city_file_path)
-        self.connections_df = pd.read_csv(connections_file_path)
-
-    def create_listbox(self) -> None:
-        """Build list box from loaded data"""
-        self.set_scrollbar_position()
-        self.listbox.pack(padx=20, pady=10)
-
-        for item in self.cities_df["city"].tolist():
-            self.listbox.insert(END, item)
-
-    def select_on_click_listener(self) -> None:
-        """Show map with loaded points on click"""
-        self.map(self.cities_df)
-
     def open_from_file_on_click_listener(self) -> None:
-        """Show map with points loaded from file"""
+        """Load points from file"""
+        file = filedialog.askopenfilename(
+            initialdir=os.getcwd(), title="Open Data File", filetypes=(("all files", "*"),)
+        )
+        self.cities_df = pd.read_csv(file)
+
+    def show_on_click_listener(self):
+        """Show map with loaded points"""
         self.map(self.cities_df)
+
+    def find_route(self):
+        optimizer = set_vrp_hyper_parameters(n_points=self.cities_df.index.size, n_agents=self.number_of_vehicles)
+        route, length = optimizer.minimize(self.cities_df[["lat", "long"]].values, num_steps=100, patience=10, silent=True)
+
+    def find_routes_on_click_listener(self):
+        self.find_route()
 
     def set_scrollbar_position(self) -> None:
         """Set initial scrollbar position"""
