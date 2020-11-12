@@ -1,5 +1,5 @@
 import os
-from tkinter import Label, Frame, Scrollbar, VERTICAL, Listbox, MULTIPLE, Button, RIGHT, Y, Tk, filedialog
+from tkinter import Label, Frame, Scrollbar, VERTICAL, Listbox, MULTIPLE, Button, RIGHT, Y, Tk, filedialog, Entry
 
 import pandas as pd
 
@@ -25,6 +25,9 @@ class App:
         self.frame = Frame(self.root)
         self.scrollbar = Scrollbar(self.frame, orient=VERTICAL)
         self.listbox = Listbox(self.frame, width=50, yscrollcommand=self.scrollbar.set, selectmode=MULTIPLE)
+        self.vehicles = Entry(self.root)
+        self.vehicles.pack()
+        self.vehicles.insert(0, "Enter number of vehicles:")
         # buttons
         self.open_from_file_button = Button(
             self.root, text="OPEN FROM FILE", command=self.open_from_file_on_click_listener
@@ -40,7 +43,7 @@ class App:
         self.cities_df = pd.DataFrame()
         self.connections = []
         # optimizer parameters
-        self.number_of_vehicles = 5
+        self.number_of_vehicles = 0
         # map object
         self.map = Map()
 
@@ -61,6 +64,8 @@ class App:
         self.map(self.cities_df, self.connections)
 
     def find_routes_on_click_listener(self):
+        self.number_of_vehicles = int(self.vehicles.get())
+        print(self.number_of_vehicles)
         self.find_route()
 
     def find_route(self):

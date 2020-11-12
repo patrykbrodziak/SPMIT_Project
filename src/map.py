@@ -31,7 +31,7 @@ class Map:
                 hoverinfo="text",
                 text=frame["city"],
                 mode="markers",
-                marker=dict(size=10, color="rgb(255, 0, 0)",),
+                marker=dict(size=10, color="rgb(255, 0, 0)"),
             )
         )
 
@@ -58,13 +58,17 @@ class Map:
                            with keys `lat` and `lon`
         :param traces: list of list of IDs of cities containing order in which they are traversed
         """
+        self.colors = ["rgb(3, 0, 253)", "rgb(128, 0, 0)", "rgb(254, 254, 51)", "rgb(0, 255, 255)", "rgb(168, 8, 8)"]
+        self.color = 0
         for trace in traces:
             for start_id, end_id in zip(trace[:-1], trace[1:]):
                 self.figure.add_trace(
                     go.Scattermapbox(
-                        lon=[scatter_df["lon"][start_id], scatter_df["lon"][end_id]],
-                        lat=[scatter_df["lat"][end_id], scatter_df["lat"][end_id]],
+                        lon=[scatter_df["long"][start_id], scatter_df["long"][end_id]],
+                        lat=[scatter_df["lat"][start_id], scatter_df["lat"][end_id]],
                         mode="lines",
                         text="",
+                        line=dict(color=self.colors[self.i])
                     )
                 )
+            self.i+=1
